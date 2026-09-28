@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+
+	"github.com/coreos/go-iptables/iptables"
 )
 
 // Run creates and configures the container network namespace and bridge.
@@ -38,6 +40,19 @@ func Run() (err error) {
 	cmdMoveCeth := exec.Command("ip", "link", "set", cethName, "netns", networkNamespaceName)
 	if output, err := cmdMoveCeth.CombinedOutput(); err != nil {
 		return fmt.Errorf("failed to move ceth0 to namespace: %w\nOutput: %s", err, string(output))
+	}
+
+	// add nat rules in ip table to route traffic to the outside network
+	ipt, err := iptables.New()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// AppendUnique only adds the rule if it doesn't already exist
+	err = ipt.AppendUnique("nat", "POSTROUTING",
+		"-s", "172.18.0.0/16", "!", "-o", "br0", "-j", "MASQUERADE")
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	script := `
