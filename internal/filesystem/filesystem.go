@@ -65,7 +65,10 @@ func Run() (err error) {
 
 	script := buildContainerScript(rootfs, containerName)
 
-	cmd := exec.Command("unshare", "--mount", "--cgroup", "--pid", "--uts", "--fork", "bash", "-c", script)
+	cmd := exec.Command("nsenter", "--net=/var/run/netns/netns0",
+		"unshare", "--mount", "--cgroup", "--pid", "--uts", "--fork",
+		"bash", "-c", script)
+
 	cmd.SysProcAttr = &syscall.SysProcAttr{UseCgroupFD: true, CgroupFD: int(cgDir.Fd())}
 
 	cmd.Stdin = os.Stdin
